@@ -64,15 +64,16 @@ plot_byweek_function <- function(df, var,var_name, horizon_num,subt) {
     expand_limits(y=0) +
     scale_y_continuous(name = paste("Average",var)) +
     # guides(color=FALSE, group = FALSE) +
-    guides(color="none", group = "none") +
+    # guides(color="none", group = "none") +
     ggtitle(paste0("Average ", horizon_num,"-week ahead ",var_name," by model",
                    '<br>',
                    '<sup>',
                     subt,
                    '<sup>')) +
-    xlab("Target End Date") +
-    theme(axis.ticks.length.x = unit(0.5, "cm"),
-          axis.text.x = element_text(vjust = 7, hjust = -0.2))
+    xlab("Target End Date") 
+  # +
+    # theme(axis.ticks.length.x = unit(0.5, "cm"),
+    #       axis.text.x = element_text(vjust = 7, hjust = -0.2))
 }
 
 
@@ -89,11 +90,12 @@ cplot_byweek_function <- function(df, var,var_name, horizon_num) {
     expand_limits(y=0) +
     scale_y_continuous(name = paste("Empirical",var_name)) +
     # guides(color=FALSE, group = FALSE) +
-    guides(color="none", group = "none") +
+    # guides(color="none", group = "none") +
     ggtitle(paste0("Empirical ", horizon_num,"-week ahead ",var_name," by model")) +
-    xlab("Target End Date") +
-    theme(axis.ticks.length.x = unit(0.5, "cm"),
-          axis.text.x = element_text(vjust = 7, hjust = -0.2))
+    xlab("Target End Date")
+  # +
+  #   theme(axis.ticks.length.x = unit(0.5, "cm"),
+  #         axis.text.x = element_text(vjust = 7, hjust = -0.2))
 }
 
 # plot_by_location_wis: Plot relative wis by location and model
@@ -164,7 +166,7 @@ diff_weeks_season = as.numeric(diff_weeks_season)
 
 ```{r load data}
 #load files generated in query-scores-weekly-report.R
-setwd("~/github/flu-hosp-forecasts/reports")
+setwd("~/github/flusight-eval/reports")
 load(file = "raw_data.rda")
 load(file = "log_data.rda")
 load(file = "raw_scores.rda")
@@ -647,7 +649,7 @@ For the figures, WIS is used as a metric, with the y axis truncated at the 97.5 
 
 
 #### 0 Week Horizon WIS
-```{r,fig.width=8, fig.height=6 }
+```{r,fig.width=10, fig.height=6 }
 
 # wis
 wis_byweek_horizon <- raw_scores |>
@@ -684,7 +686,7 @@ ggplotly(by_week_wis_0wk, tooltip = c("label", "labelx", "labely"))
 
 #### 1 Week Horizon WIS
 
-```{r 1 week,fig.width=8, fig.height=6}
+```{r 1 week,fig.width=10, fig.height=6}
 
 wis_byweek_horizon1 <- wis_byweek_horizon |>
   filter(horizon ==1)
@@ -710,7 +712,7 @@ ggplotly(by_week_wis_1wk,tooltip = c("label", "labelx", "labely"))
 
 In this figure, the dotted black line represents the average 1 week ahead error across all models, as a "point of reference". This shows that the scale of errors increases with larger horizons.
 
-```{r,fig.width=8, fig.height=6}
+```{r,fig.width=10, fig.height=6}
 #calc 1 week error
 meanwis_1wk <- wis_byweek_horizon %>%
   filter(horizon == "1") %>%
@@ -746,7 +748,7 @@ ggplotly(by_week_wis_2wk,tooltip = c("label", "labelx", "labely"))
 
 In this figure, the dotted black line represents the average 1 week ahead error across all models, as a "point of reference". This shows that the scale of errors increases with larger horizons.
 
-```{r 3 week,fig.width=8, fig.height=6}
+```{r 3 week,fig.width=10, fig.height=6}
 #calc 1 week error
 meanwis_1wk <- wis_byweek_horizon %>%
   filter(horizon == "1") %>%
@@ -781,7 +783,7 @@ ggplotly(by_week_wis_3wk,tooltip = c("label", "labelx", "labely"))
 
 We would expect a well-calibrated model to have a value of 95% in this plot.
 
-```{r,fig.width=8, fig.height=6 }
+```{r,fig.width=10, fig.height=6 }
 
 c_byweek_horizon <- raw_scores |>
   filter(reference_date>=first_eval_sat_season & model %in% season_models & location !=11) %>%
