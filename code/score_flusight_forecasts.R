@@ -102,7 +102,7 @@ scores_log <- log_scores |>
 head(scores_log)
 
 #write rda 
-setwd("~/github/flu-hosp-forecasts/reports")
+setwd("~/github/flusight-eval/reports")
 save(raw_data, file = "raw_data.rda")
 save(log_data, file = "log_data.rda")
 save(raw_scores, file = "raw_scores.rda")
