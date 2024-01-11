@@ -17,6 +17,11 @@ current_ref_date <- lubridate::ceiling_date(Sys.Date(), "week") - lubridate::day
 
 hub_path <- "../FluSight-forecast-hub"
 
+#download metadata
+meta_data<-load_model_metadata(hub_path) |>
+  rename(model = model_id) |>
+  select(model, designated_model)
+  
 hub_con <- connect_hub(hub_path)
 raw_forecasts <- hub_con |>
   dplyr::filter(
@@ -103,11 +108,14 @@ head(scores_log)
 
 #write rda 
 setwd("~/github/flusight-eval/reports")
+save(meta_data,file="meta_data.rda")
 save(raw_data, file = "raw_data.rda")
 save(log_data, file = "log_data.rda")
 save(raw_scores, file = "raw_scores.rda")
 save(log_scores, file = "log_scores.rda")
 save(raw_truth, file = "raw_truth.rda")
 save(log_truth, file = "log_truth.rda")
+
+
 
 

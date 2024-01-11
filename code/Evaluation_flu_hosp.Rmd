@@ -60,6 +60,7 @@ plot_byweek_function <- function(df, var,var_name, horizon_num,subt) {
                                                             x = target_end_date, 
                                                             y = wis, color = model)) +
     geom_line(aes(group = model), alpha=.5) +
+    geom_line(aes(group = model), alpha=.5) +
     geom_point(aes(group = model), alpha=.5, size = 2) +
     expand_limits(y=0) +
     scale_y_continuous(name = paste("Average",var)) +
@@ -68,12 +69,12 @@ plot_byweek_function <- function(df, var,var_name, horizon_num,subt) {
     ggtitle(paste0("Average ", horizon_num,"-week ahead ",var_name," by model",
                    '<br>',
                    '<sup>',
-                    subt,
+                   subt,
                    '<sup>')) +
     xlab("Target End Date") 
   # +
-    # theme(axis.ticks.length.x = unit(0.5, "cm"),
-    #       axis.text.x = element_text(vjust = 7, hjust = -0.2))
+  # theme(axis.ticks.length.x = unit(0.5, "cm"),
+  #       axis.text.x = element_text(vjust = 7, hjust = -0.2))
 }
 
 
@@ -99,8 +100,8 @@ cplot_byweek_function <- function(df, var,var_name, horizon_num) {
 }
 
 # plot_by_location_wis: Plot relative wis by location and model
-  plot_by_location_wis <- function(df, order, location_order,subt) {
-    ggplot(df, 
+plot_by_location_wis <- function(df, order, location_order,subt) {
+  ggplot(df, 
          aes(x=model, y=location_name, 
              fill= scales::oob_squish(log_relative_wis, range = c(- 2.584963, 2.584963)))) +
     geom_tile() +
@@ -109,7 +110,7 @@ cplot_byweek_function <- function(df, var,var_name, horizon_num) {
                          name = "Relative WIS", 
                          breaks = c(-2,-1,0,1,2), 
                          labels =c("0.25", 0.5, 1, 2, 4)) + 
-      ggtitle(paste0(subt)) + 
+    ggtitle(paste0(subt)) + 
     xlab(NULL) + ylab(NULL) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 9),
           axis.title.x = element_text(size = 9),
@@ -117,7 +118,7 @@ cplot_byweek_function <- function(df, var,var_name, horizon_num) {
           title = element_text(size = 9)) 
 }
 
-  #Plot truth data at US level
+#Plot truth data at US level
 plot_truth <- function(dat,tar,subtar,ylab) {
   ggplot(data = dat, aes(x = date, y = value)) +
     #geom_line(color = "black") +
@@ -167,13 +168,14 @@ diff_weeks_season = as.numeric(diff_weeks_season)
 ```{r load data}
 #load files generated in query-scores-weekly-report.R
 setwd("~/github/flusight-eval/reports")
-load(file = "raw_data.rda")
-load(file = "log_data.rda")
-load(file = "raw_scores.rda")
-load(file = "log_scores.rda") 
-load(file = "raw_truth.rda")
-load(file = "log_truth.rda") 
-
+load(file = "meta_data.rda")
+load(file = "~/github/flusight-eval/reports/raw_data.rda")
+load(file = "~/github/flusight-eval/reports/log_data.rda")
+load(file = "~/github/flusight-eval/reports/raw_scores.rda")
+load(file = "~/github/flusight-eval/reports/log_scores.rda") 
+load(file = "~/github/flusight-eval/reports/raw_truth.rda")
+load(file = "~/github/flusight-eval/reports/log_truth.rda") 
+load(file = "~/github/flusight-eval/reports/meta_data.rda") 
 
 # # remove COVIDhub-ensemble and COVID_CDC-ensemble models 
 # score_hosp_all <- score_hosp_all  %>% filter(model != "COVIDhub-ensemble" & model != "COVIDhub_CDC-ensemble")
@@ -188,7 +190,7 @@ location_order <- raw_truth %>%
   filter(date == last_eval_sat-7) %>%
   arrange(value) %>%
   pull(location_name)
-  
+
 ```
 
 
@@ -246,7 +248,7 @@ mae_recent_by_horizon <- raw_scores |>
 # forecasts by model 
 n_by_location_date <- raw_scores |>
   filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
-   group_by(model,quantile) %>%   
+  group_by(model,quantile) %>%   
   mutate(n_forecasts = sum(!is.na(interval_score))) %>% 
   summarise("# recent forecasts" = max(n_forecasts)) %>% 
   distinct(model, .keep_all=TRUE) %>% 
@@ -259,7 +261,7 @@ wis_recent_by_model <- raw_scores |>
   filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>%
   add_coverage(ranges = c(50, 95), by = c("model")) |>
   summarise_scores(by = c("model"),relative_skill=TRUE,  baseline="FluSight-baseline")|>
-    mutate(rel_wis=round(scaled_rel_skill,2))|>
+  mutate(rel_wis=round(scaled_rel_skill,2))|>
   select(model, rel_wis)|>
   arrange(rel_wis)
 
@@ -311,18 +313,18 @@ mae_season_by_horizon <- raw_scores |>
 # forecasts by model
 n_season_by_location_date <- raw_scores |>
   filter(reference_date>=first_eval_sat_season & model %in% season_models & location != "US") %>% 
-   group_by(model,quantile) %>%   
+  group_by(model,quantile) %>%   
   mutate(n_forecasts = sum(!is.na(interval_score))) %>% 
   summarise("# recent forecasts" = max(n_forecasts)) %>% 
   distinct(model, .keep_all=TRUE) %>% 
   select(-quantile)
- 
+
 # scores by model
 wis_season_by_model <- raw_scores |>
   filter(reference_date>=first_eval_sat_season & model %in% season_models  & location != "US") %>%
   add_coverage(ranges = c(50, 95), by = c("model")) |>
   summarise_scores(by = c("model"),relative_skill=TRUE,  baseline="FluSight-baseline")|>
-    mutate(rel_wis=round(scaled_rel_skill,2))|>
+  mutate(rel_wis=round(scaled_rel_skill,2))|>
   select(model, rel_wis)|>
   arrange(rel_wis)
 
@@ -389,7 +391,7 @@ c_recent_by_model_95 <- raw_scores |>
 recent_coverage<-n_by_location_date  |>
   left_join(c_recent_by_model_50 , by="model")|> 
   left_join(c50_recent_by_horizon , by="model")|> 
-    left_join(c_recent_by_model_95 , by="model")|> 
+  left_join(c_recent_by_model_95 , by="model")|> 
   left_join(c95_recent_by_horizon , by="model")|> 
   arrange(diff_95)|>
   select(-diff_95)
@@ -441,7 +443,7 @@ c_season_by_model_95 <- raw_scores |>
 season_coverage<-n_season_by_location_date  |>
   left_join(c_season_by_model_50 , by="model")|> 
   left_join(c50_season_by_horizon , by="model")|> 
-    left_join(c_season_by_model_95 , by="model")|> 
+  left_join(c_season_by_model_95 , by="model")|> 
   left_join(c95_season_by_horizon , by="model")|> 
   arrange(diff_95)|>
   select(-diff_95)
@@ -643,18 +645,21 @@ ggplot(wiscom_recent_by_model, aes(fill=score_names, y=value, x=model)) +
 
 ### Evaluation by Week  {.tabset .tabset-fade}
 
-In the following figures, we have evaluated models across multiple forecasting weeks. Points included in this comparison are for models that have submitted probabilistic forecasts for all 50 states. The models in the legend with a dot and line have scores for every week.  The models with just a line are missing scores for at least one week.
+In the following figures, we have evaluated models across multiple forecasting weeks. Points included in this comparison are for models that have submitted probabilistic forecasts for all 50 states. In the legend, the models with a dot and line have scores for ever week, while the models with just a line are missing scores for at least one week.
 
-For the figures, WIS is used as a metric, with the y axis truncated at the 97.5 percentile of the weekly average WIS. The first figure shows the mean WIS across all 50 states for submission weeks beginning `r format(first_eval_sat_season, "%B %d, %Y")` at a 0 week horizon. The second figure shows the mean WIS aggregated across locations, however it is for a 2 week horizon.
+For the figures, WIS is used as a metric, with the y axis truncated at the 97.5 percentile of the weekly average WIS. The first figure shows the mean WIS across all 50 states for submission weeks beginning `r format(first_eval_sat_season, "%B %d, %Y")` at a 0 week horizon. The next 3 figures show the mean WIS aggregated across locations for 1, 2 and 3 week horizons.  The last 4 figures show the empirical 95% PI coverage aggregated across locations for all horizons.  
 
 
 #### 0 Week Horizon WIS
+
+In this figure, the models with dashed lines are not included in the FluSight ensemble.
+
 ```{r,fig.width=10, fig.height=6 }
 
 # wis
 wis_byweek_horizon <- raw_scores |>
   filter(reference_date>=first_eval_sat_season & model %in% season_models & location != "US") %>%
-    # filter(reference_date>=first_eval_sat_season & model %in% season_models & location <60 & location !=11) %>%
+  # filter(reference_date>=first_eval_sat_season & model %in% season_models & location <60 & location !=11) %>%
   summarise_scores(by = c("model", "target_end_date","horizon")) |>
   rename(wis=interval_score) |>
   select(model,target_end_date,horizon,wis)
@@ -670,21 +675,31 @@ all_dates <- wis_byweek_horizon0  %>%
 miss_dates <- all_dates  %>%
   dplyr::anti_join(wis_byweek_horizon0)
 
+
 wis_byweek_horizon0_all<- wis_byweek_horizon0 %>%
-  dplyr::full_join(miss_dates)
+  dplyr::full_join(miss_dates) |>
+  left_join(meta_data, by="model") 
+
+wis_byweek_horizon0_in<- wis_byweek_horizon0_all |>
+  filter(designated_model=="TRUE")
+wis_byweek_horizon0_out<- wis_byweek_horizon0_all |>
+  filter(designated_model=="FALSE")
 
 # find 97.5 percentile
 b<-wis_byweek_horizon %>%
   filter(horizon == "3")
 p975<-quantile(b$wis,probs=.975, na.rm = TRUE)
 
-by_week_wis_0wk <- plot_byweek_function(wis_byweek_horizon0_all, var = "WIS", var_name="WIS", horizon_num = "0",subt="Based on raw counts") + coord_cartesian(ylim=c(0, p975))
-
+by_week_wis_0wk <- plot_byweek_function(wis_byweek_horizon0_in, var = "WIS", var_name="WIS", horizon_num = "0",subt="Based on raw counts")  +
+  geom_line(data = wis_byweek_horizon0_out,  linetype = "dashed") +
+  geom_point(data = wis_byweek_horizon0_out) + coord_cartesian(ylim=c(0, p975))
 
 ggplotly(by_week_wis_0wk, tooltip = c("label", "labelx", "labely"))
 ```
 
 #### 1 Week Horizon WIS
+
+In this figure, the models with dashed lines are not included in the FluSight ensemble.
 
 ```{r 1 week,fig.width=10, fig.height=6}
 
@@ -700,17 +715,26 @@ miss_dates <- all_dates  %>%
   dplyr::anti_join(wis_byweek_horizon1)
 
 wis_byweek_horizon1_all<- wis_byweek_horizon1 %>%
-  dplyr::full_join(miss_dates)
+  dplyr::full_join(miss_dates) |>
+  left_join(meta_data, by="model") 
+
+wis_byweek_horizon1_in<- wis_byweek_horizon1_all |>
+  filter(designated_model=="TRUE")
+wis_byweek_horizon1_out<- wis_byweek_horizon1_all |>
+  filter(designated_model=="FALSE")
 
 
-by_week_wis_1wk <- plot_byweek_function(wis_byweek_horizon1_all, var = "WIS", var_name="WIS", horizon_num = "1",subt="Based on raw counts")  + coord_cartesian(ylim=c(0, p975))
+by_week_wis_1wk <- plot_byweek_function(wis_byweek_horizon1_in, var = "WIS", var_name="WIS", horizon_num = "1",subt="Based on raw counts")  +
+  geom_line(data = wis_byweek_horizon1_out,  linetype = "dashed") +
+  geom_point(data = wis_byweek_horizon1_out,aes(x = target_end_date, y = wis), alpha=.5) +
+  coord_cartesian(ylim=c(0, p975))
 
 ggplotly(by_week_wis_1wk,tooltip = c("label", "labelx", "labely"))
 ```
 
 #### 2 Week Horizon WIS
 
-In this figure, the dotted black line represents the average 1 week ahead error across all models, as a "point of reference". This shows that the scale of errors increases with larger horizons.
+In this figure, the dotted black line represents the average 1 week ahead error across all models, as a "point of reference". This shows that the scale of errors increases with larger horizons. The models with dashed lines are not included in the FluSight ensemble.
 
 ```{r,fig.width=10, fig.height=6}
 #calc 1 week error
@@ -734,19 +758,29 @@ miss_dates <- all_dates  %>%
   dplyr::anti_join(wis_byweek_horizon2)
 
 wis_byweek_horizon2_all<- wis_byweek_horizon2 %>%
-  dplyr::full_join(miss_dates)
+  dplyr::full_join(miss_dates) |>
+  left_join(meta_data, by="model") 
+
+
+wis_byweek_horizon2_in<- wis_byweek_horizon2_all |>
+  filter(designated_model=="TRUE")
+wis_byweek_horizon2_out<- wis_byweek_horizon2_all |>
+  filter(designated_model=="FALSE")
 
 
 by_week_wis_2wk <- plot_byweek_function(wis_byweek_horizon2_all, var = "WIS", var_name="WIS", horizon_num = "2",subt="Based on raw counts") +
   geom_line(data = meanwis_1wk, aes(label = model, x = target_end_date, y = wis), alpha=.5, color = "black", linetype = 2) +
-  geom_point(data = meanwis_1wk, aes(x = target_end_date, y = wis), alpha=.5, size = 2, color = "black") + coord_cartesian(ylim=c(0, p975))
+  geom_point(data = meanwis_1wk, aes(x = target_end_date, y = wis), alpha=.5, size = 2, color = "black") +
+  geom_line(data = wis_byweek_horizon2_out,  linetype = "dashed") +
+  geom_point(data = wis_byweek_horizon2_out,aes(x = target_end_date, y = wis), alpha=.5) +
+  coord_cartesian(ylim=c(0, p975))
 
 ggplotly(by_week_wis_2wk,tooltip = c("label", "labelx", "labely"))
 ```
 
 #### 3 Week Horizon WIS
 
-In this figure, the dotted black line represents the average 1 week ahead error across all models, as a "point of reference". This shows that the scale of errors increases with larger horizons.
+In this figure, the dotted black line represents the average 1 week ahead error across all models, as a "point of reference". This shows that the scale of errors increases with larger horizons. The models with dashed lines are not included in the FluSight ensemble.
 
 ```{r 3 week,fig.width=10, fig.height=6}
 #calc 1 week error
@@ -770,18 +804,27 @@ miss_dates <- all_dates  %>%
   dplyr::anti_join(wis_byweek_horizon3)
 
 wis_byweek_horizon3_all<- wis_byweek_horizon3 %>%
-  dplyr::full_join(miss_dates)
+  dplyr::full_join(miss_dates) |>
+  left_join(meta_data, by="model") 
+
+wis_byweek_horizon3_in<- wis_byweek_horizon3_all |>
+  filter(designated_model=="TRUE")
+wis_byweek_horizon3_out<- wis_byweek_horizon3_all |>
+  filter(designated_model=="FALSE")
 
 
 by_week_wis_3wk <- plot_byweek_function(wis_byweek_horizon3_all, var = "WIS", var_name="WIS", horizon_num = "3",subt="Based on raw counts") +
   geom_line(data = meanwis_1wk, aes(label = model, x = target_end_date, y = wis), alpha=.5, color = "black", linetype = 2) +
-  geom_point(data = meanwis_1wk, aes(x = target_end_date, y = wis), alpha=.5, size = 2, color = "black") + coord_cartesian(ylim=c(0, p975))
+  geom_point(data = meanwis_1wk, aes(x = target_end_date, y = wis), alpha=.5, size = 2, color = "black") +
+  geom_line(data = wis_byweek_horizon3_out,  linetype = "dashed") +
+  geom_point(data = wis_byweek_horizon3_out,aes(x = target_end_date, y = wis), alpha=.5) +
+  coord_cartesian(ylim=c(0, p975))
 
 ggplotly(by_week_wis_3wk,tooltip = c("label", "labelx", "labely"))
 ```
 #### 0 Week Horizon 95% PI Coverage
 
-We would expect a well-calibrated model to have a value of 95% in this plot.
+We would expect a well-calibrated model to have a value of 95% in this plot. In this figure, the models with dashed lines are not included in the FluSight ensemble. In this figure, the models with dashed lines are not included in the FluSight ensemble.
 
 ```{r,fig.width=10, fig.height=6 }
 
@@ -805,9 +848,18 @@ miss_dates <- all_dates  %>%
   dplyr::anti_join(c_byweek_horizon0)
 
 c_byweek_horizon0_all<- c_byweek_horizon0 %>%
-  dplyr::full_join(miss_dates)
+  dplyr::full_join(miss_dates) |>
+  left_join(meta_data, by="model")
 
-by_week_c_0wk <- cplot_byweek_function(c_byweek_horizon0_all, var = "c95", var_name="95% PI Coverage", horizon_num = "0") +   geom_hline(yintercept = .95)
+c_byweek_horizon0_in<- c_byweek_horizon0_all |>
+  filter(designated_model=="TRUE")
+c_byweek_horizon0_out<- c_byweek_horizon0_all |>
+  filter(designated_model=="FALSE")
+
+
+by_week_c_0wk <- cplot_byweek_function(c_byweek_horizon0_in, var = "c95", var_name="95% PI Coverage", horizon_num = "0") +   geom_hline(yintercept = .95)+
+  geom_line(data = c_byweek_horizon0_out,  linetype = "dashed") +
+  geom_point(data = c_byweek_horizon0_out,aes(x = target_end_date, y = c95), alpha=.5) 
 
 
 ggplotly(by_week_c_0wk, tooltip = c("label", "labelx", "labely"))
@@ -816,7 +868,7 @@ ggplotly(by_week_c_0wk, tooltip = c("label", "labelx", "labely"))
 
 #### 1 Week Horizon 95% PI Coverage
 
-We would expect a well-calibrated model to have a value of 95% in this plot. There is typically larger error for the larger horizons compared to the 0 week horizon.
+We would expect a well-calibrated model to have a value of 95% in this plot. There is typically larger error for the larger horizons compared to the 0 week horizon. In this figure, the models with dashed lines are not included in the FluSight ensemble.
 
 ```{r,fig.width=10, fig.height=6}
 
@@ -832,10 +884,18 @@ miss_dates <- all_dates  %>%
   dplyr::anti_join(c_byweek_horizon1)
 
 c_byweek_horizon1_all<- c_byweek_horizon1 %>%
-  dplyr::full_join(miss_dates)
+  dplyr::full_join(miss_dates) |>
+  left_join(meta_data, by="model") 
 
-by_week_c_1wk <- cplot_byweek_function(c_byweek_horizon1_all, var = "95% PI Coverage", var_name="95% PI Coverage", horizon_num = "1") +   geom_hline(yintercept = .95)
+c_byweek_horizon1_in<- c_byweek_horizon1_all |>
+  filter(designated_model=="TRUE")
+c_byweek_horizon1_out<- c_byweek_horizon1_all |>
+  filter(designated_model=="FALSE")
 
+
+by_week_c_1wk <- cplot_byweek_function(c_byweek_horizon1_in, var = "c95", var_name="95% PI Coverage", horizon_num = "1") +   geom_hline(yintercept = .95)+
+  geom_line(data = c_byweek_horizon1_out,  linetype = "dashed") +
+  geom_point(data = c_byweek_horizon1_out,aes(x = target_end_date, y = c95), alpha=.5) 
 
 ggplotly(by_week_c_1wk, tooltip = c("label", "labelx", "labely"))
 
@@ -843,7 +903,7 @@ ggplotly(by_week_c_1wk, tooltip = c("label", "labelx", "labely"))
 
 #### 2 Week Horizon 95% PI Coverage
 
-We would expect a well-calibrated model to have a value of 95% in this plot. There is typically larger error for the larger horizons compared to the 0 week horizon.
+We would expect a well-calibrated model to have a value of 95% in this plot. There is typically larger error for the larger horizons compared to the 0 week horizon. In this figure, the models with dashed lines are not included in the FluSight ensemble.
 
 ```{r,fig.width=10, fig.height=6}
 
@@ -859,9 +919,18 @@ miss_dates <- all_dates  %>%
   dplyr::anti_join(c_byweek_horizon2)
 
 c_byweek_horizon2_all<- c_byweek_horizon2 %>%
-  dplyr::full_join(miss_dates)
+  dplyr::full_join(miss_dates) |>
+  left_join(meta_data, by="model") 
 
-by_week_c_2wk <- cplot_byweek_function(c_byweek_horizon2_all, var = "95% PI Coverage", var_name="95% PI Coverage", horizon_num = "2") +   geom_hline(yintercept = .95)
+c_byweek_horizon2_in<- c_byweek_horizon2_all |>
+  filter(designated_model=="TRUE")
+c_byweek_horizon2_out<- c_byweek_horizon2_all |>
+  filter(designated_model=="FALSE")
+
+
+by_week_c_2wk <- cplot_byweek_function(c_byweek_horizon2_in, var = "c95", var_name="95% PI Coverage", horizon_num = "2") +   geom_hline(yintercept = .95)+
+  geom_line(data = c_byweek_horizon2_out,  linetype = "dashed") +
+  geom_point(data = c_byweek_horizon2_out,aes(x = target_end_date, y = c95), alpha=.5) 
 
 ggplotly(by_week_c_2wk, tooltip = c("label", "labelx", "labely"))
 
@@ -869,7 +938,7 @@ ggplotly(by_week_c_2wk, tooltip = c("label", "labelx", "labely"))
 
 #### 3 Week Horizon 95% PI Coverage
 
-We would expect a well-calibrated model to have a value of 95% in this plot. There is typically larger error for the larger horizons compared to the 0 week horizon.
+We would expect a well-calibrated model to have a value of 95% in this plot. There is typically larger error for the larger horizons compared to the 0 week horizon. In this figure, the models with dashed lines are not included in the FluSight ensemble.
 
 ```{r,fig.width=10, fig.height=6}
 
@@ -885,9 +954,18 @@ miss_dates <- all_dates  %>%
   dplyr::anti_join(c_byweek_horizon3)
 
 c_byweek_horizon3_all<- c_byweek_horizon3 %>%
-  dplyr::full_join(miss_dates)
+  dplyr::full_join(miss_dates) |>
+  left_join(meta_data, by="model") 
 
-by_week_c_3wk <- cplot_byweek_function(c_byweek_horizon3_all, var = "95% PI Coverage", var_name="95% PI Coverage", horizon_num = "3") +   geom_hline(yintercept = .95)
+c_byweek_horizon3_in<- c_byweek_horizon3_all |>
+  filter(designated_model=="TRUE")
+c_byweek_horizon3_out<- c_byweek_horizon3_all |>
+  filter(designated_model=="FALSE")
+
+
+by_week_c_3wk <- cplot_byweek_function(c_byweek_horizon3_in, var = "c95", var_name="95% PI Coverage", horizon_num = "3") +   geom_hline(yintercept = .95)+
+  geom_line(data = c_byweek_horizon3_out,  linetype = "dashed") +
+  geom_point(data = c_byweek_horizon3_out,aes(x = target_end_date, y = c95), alpha=.5) 
 
 ggplotly(by_week_c_3wk, tooltip = c("label", "labelx", "labely"))
 
@@ -969,7 +1047,7 @@ mae_recent_by_horizon <- log_scores |>
 # forecasts by model 
 n_by_location_date <- log_scores |>
   filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
-   group_by(model,quantile) %>%   
+  group_by(model,quantile) %>%   
   mutate(n_forecasts = sum(!is.na(interval_score))) %>% 
   summarise("# recent forecasts" = max(n_forecasts)) %>% 
   distinct(model, .keep_all=TRUE) %>% 
@@ -982,7 +1060,7 @@ wis_recent_by_model <- log_scores |>
   filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>%
   add_coverage(ranges = c(50, 95), by = c("model")) |>
   summarise_scores(by = c("model"),relative_skill=TRUE,  baseline="FluSight-baseline")|>
-    mutate(rel_wis=round(scaled_rel_skill,2))|>
+  mutate(rel_wis=round(scaled_rel_skill,2))|>
   select(model, rel_wis)|>
   arrange(rel_wis)
 
@@ -1034,18 +1112,18 @@ mae_season_by_horizon <- log_scores |>
 # forecasts by model
 n_season_by_location_date <- log_scores |>
   filter(reference_date>=first_eval_sat_season & model %in% season_models & location != "US") %>% 
-   group_by(model,quantile) %>%   
+  group_by(model,quantile) %>%   
   mutate(n_forecasts = sum(!is.na(interval_score))) %>% 
   summarise("# recent forecasts" = max(n_forecasts)) %>% 
   distinct(model, .keep_all=TRUE) %>% 
   select(-quantile)
- 
+
 # scores by model
 wis_season_by_model <- log_scores |>
   filter(reference_date>=first_eval_sat_season & model %in% season_models  & location != "US") %>%
   add_coverage(ranges = c(50, 95), by = c("model")) |>
   summarise_scores(by = c("model"),relative_skill=TRUE,  baseline="FluSight-baseline")|>
-    mutate(rel_wis=round(scaled_rel_skill,2))|>
+  mutate(rel_wis=round(scaled_rel_skill,2))|>
   select(model, rel_wis)|>
   arrange(rel_wis)
 
@@ -1188,18 +1266,21 @@ ggplot(wiscom_recent_by_model, aes(fill=score_names, y=value, x=model)) +
 
 ### Evaluation by Week  {.tabset .tabset-fade}
 
-In the following figures, we have evaluated models across multiple forecasting weeks. Points included in this comparison are for models that have submitted probabilistic forecasts for all 50 states. The models in the legend with a dot and line have scores for every week.  The models with just a line are missing scores for at least one week.
+In the following figures, we have evaluated models across multiple forecasting weeks. Points included in this comparison are for models that have submitted probabilistic forecasts for all 50 states. In the legend, the models with a dot and line have scores for ever week, while the models with just a line are missing scores for at least one week.
 
 For the first 2 figures, WIS is used as a metric, with the y axis truncated at the 97.5 percentile of the weekly average WIS. The first figure shows the mean WIS across all 50 states for submission weeks beginning `r format(first_eval_sat_season, "%B %d, %Y")` at a 0 week horizon. The second figure shows the mean WIS aggregated across locations, however it is for a 2 week horizon.
 
 
 #### 0 Week Horizon WIS
-```{r -log1,fig.width=8, fig.height=6 }
+
+
+In this figure, the models with dashed lines are not included in the FluSight ensemble.
+```{r -log1,fig.width=10, fig.height=6 }
 
 # wis
 wis_byweek_horizon <- log_scores |>
   filter(reference_date>=first_eval_sat_season & model %in% season_models & location != "US") %>%
-    # filter(reference_date>=first_eval_sat_season & model %in% season_models & location <60 & location !=11) %>%
+  # filter(reference_date>=first_eval_sat_season & model %in% season_models & location <60 & location !=11) %>%
   summarise_scores(by = c("model", "target_end_date","horizon")) |>
   rename(wis=interval_score) |>
   select(model,target_end_date,horizon,wis)
@@ -1216,23 +1297,30 @@ miss_dates <- all_dates  %>%
   dplyr::anti_join(wis_byweek_horizon0)
 
 wis_byweek_horizon0_all<- wis_byweek_horizon0 %>%
-  dplyr::full_join(miss_dates)
+  dplyr::full_join(miss_dates) |>
+  left_join(meta_data, by="model") 
+
+wis_byweek_horizon0_in<- wis_byweek_horizon0_all |>
+  filter(designated_model=="TRUE")
+wis_byweek_horizon0_out<- wis_byweek_horizon0_all |>
+  filter(designated_model=="FALSE")
 
 # find 97.5 percentile
 b<-wis_byweek_horizon %>%
   filter(horizon == "3")
 p975<-quantile(b$wis,probs=.975, na.rm = TRUE)
 
-by_week_wis_0wk <- plot_byweek_function(wis_byweek_horizon0_all, var = "WIS", var_name="WIS", horizon_num = "0",subt="Based on log-transformed counts") + coord_cartesian(ylim=c(0, p975))
-
+by_week_wis_0wk <- plot_byweek_function(wis_byweek_horizon0_in, var = "WIS", var_name="WIS", horizon_num = "0",subt="Based on raw counts")  +
+  geom_line(data = wis_byweek_horizon0_out,  linetype = "dashed") +
+  geom_point(data = wis_byweek_horizon0_out) + coord_cartesian(ylim=c(0, p975))
 
 ggplotly(by_week_wis_0wk, tooltip = c("label", "labelx", "labely"))
 ```
 
 #### 1 Week Horizon WIS
 
-
-```{r 1 week log,fig.width=8, fig.height=6}
+In this figure, the models with dashed lines are not included in the FluSight ensemble.
+```{r 1 week log,fig.width=10, fig.height=6}
 wis_byweek_horizon1 <- wis_byweek_horizon |>
   filter(horizon ==1)
 
@@ -1244,21 +1332,30 @@ all_dates <- wis_byweek_horizon1  %>%
 miss_dates <- all_dates  %>%
   dplyr::anti_join(wis_byweek_horizon1)
 
-wis_byweek_horizon3_all<- wis_byweek_horizon1 %>%
-  dplyr::full_join(miss_dates)
+wis_byweek_horizon1_all<- wis_byweek_horizon1 %>%
+  dplyr::full_join(miss_dates)  |>
+  left_join(meta_data, by="model") 
+
+wis_byweek_horizon1_in<- wis_byweek_horizon1_all |>
+  filter(designated_model=="TRUE")
+wis_byweek_horizon1_out<- wis_byweek_horizon1_all |>
+  filter(designated_model=="FALSE")
 
 
-by_week_wis_1wk <- plot_byweek_function(wis_byweek_horizon3_all, var = "WIS", var_name="WIS", horizon_num = "1",subt="Based on log-transformed counts") + coord_cartesian(ylim=c(0, p975))
+by_week_wis_1wk <- plot_byweek_function(wis_byweek_horizon1_in, var = "WIS", var_name="WIS", horizon_num = "1",subt="Based on raw counts")  +
+  geom_line(data = wis_byweek_horizon1_out,  linetype = "dashed") +
+  geom_point(data = wis_byweek_horizon1_out,aes(x = target_end_date, y = wis), alpha=.5) +
+  coord_cartesian(ylim=c(0, p975))
 
-ggplotly(by_week_wis_1wk,tooltip = c("label", "labelx", "labely"),legend=visible)
+ggplotly(by_week_wis_1wk,tooltip = c("label", "labelx", "labely"))
 ```
 
 #### 2 Week Horizon WIS
 
 
-In this figure, the dotted black line represents the average 1 week ahead error across all models, as a "point of reference". This shows that the scale of errors increases with larger horizons.
+In this figure, the dotted black line represents the average 1 week ahead error across all models, as a "point of reference". This shows that the scale of errors increases with larger horizons. The models with dashed lines are not included in the FluSight ensemble.
 
-```{r -log2,fig.width=8, fig.height=6}
+```{r -log2,fig.width=10, fig.height=6}
 #calc 1 week error
 meanwis_1wk <- wis_byweek_horizon %>%
   filter(horizon == "1") %>%
@@ -1280,21 +1377,30 @@ miss_dates <- all_dates  %>%
   dplyr::anti_join(wis_byweek_horizon2)
 
 wis_byweek_horizon2_all<- wis_byweek_horizon2 %>%
-  dplyr::full_join(miss_dates)
+  dplyr::full_join(miss_dates) |>
+  left_join(meta_data, by="model") 
+
+wis_byweek_horizon2_in<- wis_byweek_horizon2_all |>
+  filter(designated_model=="TRUE")
+wis_byweek_horizon2_out<- wis_byweek_horizon2_all |>
+  filter(designated_model=="FALSE")
 
 
-by_week_wis_2wk <- plot_byweek_function(wis_byweek_horizon2_all, var = "WIS", var_name="WIS", horizon_num = "2",subt="Based on log-transformed counts") +
+by_week_wis_2wk <- plot_byweek_function(wis_byweek_horizon2_all, var = "WIS", var_name="WIS", horizon_num = "2",subt="Based on raw counts") +
   geom_line(data = meanwis_1wk, aes(label = model, x = target_end_date, y = wis), alpha=.5, color = "black", linetype = 2) +
-  geom_point(data = meanwis_1wk, aes(x = target_end_date, y = wis), alpha=.5, size = 2, color = "black") + coord_cartesian(ylim=c(0, p975))
+  geom_point(data = meanwis_1wk, aes(x = target_end_date, y = wis), alpha=.5, size = 2, color = "black") +
+  geom_line(data = wis_byweek_horizon2_out,  linetype = "dashed") +
+  geom_point(data = wis_byweek_horizon2_out,aes(x = target_end_date, y = wis), alpha=.5) +
+  coord_cartesian(ylim=c(0, p975))
 
 ggplotly(by_week_wis_2wk,tooltip = c("label", "labelx", "labely"))
 ```
 
 #### 3 Week Horizon WIS
 
-In this figure, the dotted black line represents the average 1 week ahead error across all models, as a "point of reference". This shows that the scale of errors increases with larger horizons.
+In this figure, the dotted black line represents the average 1 week ahead error across all models, as a "point of reference". This shows that the scale of errors increases with larger horizons. The models with dashed lines are not included in the FluSight ensemble.
 
-```{r 3 week log,fig.width=8, fig.height=6}
+```{r 3 week log,fig.width=10, fig.height=6}
 #calc 1 week error
 meanwis_1wk <- wis_byweek_horizon %>%
   filter(horizon == "1") %>%
@@ -1316,12 +1422,21 @@ miss_dates <- all_dates  %>%
   dplyr::anti_join(wis_byweek_horizon3)
 
 wis_byweek_horizon3_all<- wis_byweek_horizon3 %>%
-  dplyr::full_join(miss_dates)
+  dplyr::full_join(miss_dates) |>
+  left_join(meta_data, by="model") 
+
+wis_byweek_horizon3_in<- wis_byweek_horizon3_all |>
+  filter(designated_model=="TRUE")
+wis_byweek_horizon3_out<- wis_byweek_horizon3_all |>
+  filter(designated_model=="FALSE")
 
 
-by_week_wis_3wk <- plot_byweek_function(wis_byweek_horizon3_all, var = "WIS", var_name="WIS", horizon_num = "3",subt="Based on log-transformed counts") +
+by_week_wis_3wk <- plot_byweek_function(wis_byweek_horizon3_all, var = "WIS", var_name="WIS", horizon_num = "3",subt="Based on raw counts") +
   geom_line(data = meanwis_1wk, aes(label = model, x = target_end_date, y = wis), alpha=.5, color = "black", linetype = 2) +
-  geom_point(data = meanwis_1wk, aes(x = target_end_date, y = wis), alpha=.5, size = 2, color = "black") + coord_cartesian(ylim=c(0, p975))
+  geom_point(data = meanwis_1wk, aes(x = target_end_date, y = wis), alpha=.5, size = 2, color = "black") +
+  geom_line(data = wis_byweek_horizon3_out,  linetype = "dashed") +
+  geom_point(data = wis_byweek_horizon3_out,aes(x = target_end_date, y = wis), alpha=.5) +
+  coord_cartesian(ylim=c(0, p975))
 
 ggplotly(by_week_wis_3wk,tooltip = c("label", "labelx", "labely"))
 ```
