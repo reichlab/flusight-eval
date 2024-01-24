@@ -13,7 +13,7 @@ library(plotly)
 library(here)
 setwd(here::here())
 
-current_ref_date <- lubridate::ceiling_date(Sys.Date(), "week") - lubridate::days(1)
+# current_ref_date <- lubridate::ceiling_date(Sys.Date(), "week") - lubridate::days(1)
 
 hub_path <- "../FluSight-forecast-hub"
 
