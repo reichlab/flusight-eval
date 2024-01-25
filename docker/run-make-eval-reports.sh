@@ -52,10 +52,9 @@ Rscript --vanilla "score_flusight_forecasts.R" /data/FluSight-forecast-hub/ >${O
 slack_message "knitting the file"
 Rscript -e "library(knitr); rmarkdown::render('Evaluation_flu_hosp.Rmd')" >>${OUT_FILE} 2>&1
 
-# move and rename the output html file to `${FLUSIGHT_EVAL_DIR}/reports/<yyyy-mm-dd>_Evaluation_flu_hosp.html`.
-# Monday calculation per https://stackoverflow.com/questions/1622038/find-mondays-date-with-python :
-MONDAY=$(python3 -c "from datetime import date ; from dateutil.relativedelta import relativedelta, MO ; print(date.today() + relativedelta(weekday=MO(-1)))")
-mv "Evaluation_flu_hosp.html" "${FLUSIGHT_EVAL_DIR}/reports/${MONDAY}_Evaluation_flu_hosp.html"
+# move and rename the output html file to `${FLUSIGHT_EVAL_DIR}/reports/<yyyy-mm-dd>_Evaluation_flu_hosp.html`
+TODAY_DATE=$(date +'%Y-%m-%d') # e.g., 2022-02-17
+mv "Evaluation_flu_hosp.html" "${FLUSIGHT_EVAL_DIR}/reports/${TODAY_DATE}_Evaluation_flu_hosp.html"
 
 # run update-reports-json.py (creates/updates `reports/reports.json`). must be done after the file has been copied to
 # `/data/FluSight-forecast-hub/reports/`
@@ -72,7 +71,6 @@ fi
 #
 
 cd ${FLUSIGHT_EVAL_DIR}
-TODAY_DATE=$(date +'%Y-%m-%d') # e.g., 2022-02-17
 git add reports/\*
 git commit -m "latest flusight-eval report, ${TODAY_DATE}"
 git push
