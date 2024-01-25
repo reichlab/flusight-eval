@@ -1,4 +1,5 @@
 #Script to query FluSight scores
+# args (1): `hub_path`: absolute path of https://github.com/cdcepi/FluSight-forecast-hub repo clone
 
 #Set-up and load forecast data 
 library(hubUtils)
@@ -10,18 +11,19 @@ library(dplyr)
 library(ggplot2)
 library(plotly)
 
-library(here)
-setwd(here::here())
-
-current_ref_date <- lubridate::ceiling_date(Sys.Date(), "week") - lubridate::days(1)
-
-hub_path <- "../FluSight-forecast-hub"
+# set hub_path from args
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 1) {
+  stop("Missing required argument: hub_path", call. = FALSE)
+} else {
+  hub_path <- args[1]
+}
 
 #download metadata
-meta_data<-load_model_metadata(hub_path) |>
+meta_data <- load_model_metadata(hub_path) |>
   rename(model = model_id) |>
   select(model, designated_model)
-  
+
 hub_con <- connect_hub(hub_path)
 raw_forecasts <- hub_con |>
   dplyr::filter(
@@ -36,9 +38,9 @@ head(raw_forecasts)
 
 #create log of forecast data
 log_forecasts <- raw_forecasts |>
-  dplyr::mutate(value_log=log_shift(value,offset=1))|>
+  dplyr::mutate(value_log = log_shift(value, offset = 1))|>
   dplyr::select(-value)|>
-  dplyr::rename(value=value_log) 
+  dplyr::rename(value = value_log)
 head(log_forecasts)
 
 #Load raw target data
@@ -47,9 +49,9 @@ head(raw_truth)
 
 #create log of target data
 log_truth <- raw_truth |>
-  dplyr::mutate(value_log=log_shift(value,offset=1))|>
+  dplyr::mutate(value_log = log_shift(value, offset = 1))|>
   dplyr::select(-value)|>
-  dplyr::rename(value=value_log) 
+  dplyr::rename(value = value_log)
 head(log_truth)
 
 
@@ -60,7 +62,7 @@ raw_data <- raw_forecasts |>
     raw_truth |> dplyr::select(target_end_date = date, location, location_name, true_value = value),
     by = c("location", "target_end_date")
   ) |>
-  dplyr::rename(model=model_id, quantile=output_type_id, prediction=value) |>
+  dplyr::rename(model = model_id, quantile = output_type_id, prediction = value) |>
   dplyr::mutate(quantile = as.numeric(quantile))
 head(raw_data)
 
@@ -75,7 +77,7 @@ log_data <- log_forecasts |>
     log_truth |> dplyr::select(target_end_date = date, location,location_name, true_value = value),
     by = c("location", "target_end_date")
   ) |>
-  dplyr::rename(model=model_id, quantile=output_type_id, prediction=value) |>
+  dplyr::rename(model = model_id, quantile = output_type_id, prediction = value) |>
   dplyr::mutate(quantile = as.numeric(quantile))
 head(log_data)
 #confirm things set up correctly
@@ -106,9 +108,8 @@ scores_log <- log_scores |>
 
 head(scores_log)
 
-#write rda 
-setwd("~/github/flusight-eval/reports")
-save(meta_data,file="meta_data.rda")
+#write .rda files to current dir where Evaluation_flu_hosp.Rmd can find them
+save(meta_data, file = "meta_data.rda")
 save(raw_data, file = "raw_data.rda")
 save(log_data, file = "log_data.rda")
 save(raw_scores, file = "raw_scores.rda")
