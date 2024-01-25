@@ -167,15 +167,14 @@ diff_weeks_season = as.numeric(diff_weeks_season)
 
 ```{r load data}
 #load files generated in query-scores-weekly-report.R
-setwd("~/github/flusight-eval/reports")
 load(file = "meta_data.rda")
-load(file = "~/github/flusight-eval/reports/raw_data.rda")
-load(file = "~/github/flusight-eval/reports/log_data.rda")
-load(file = "~/github/flusight-eval/reports/raw_scores.rda")
-load(file = "~/github/flusight-eval/reports/log_scores.rda") 
-load(file = "~/github/flusight-eval/reports/raw_truth.rda")
-load(file = "~/github/flusight-eval/reports/log_truth.rda") 
-load(file = "~/github/flusight-eval/reports/meta_data.rda") 
+load(file = "raw_data.rda")
+load(file = "log_data.rda")
+load(file = "raw_scores.rda")
+load(file = "log_scores.rda") 
+load(file = "raw_truth.rda")
+load(file = "log_truth.rda") 
+load(file = "meta_data.rda") 
 
 # # remove COVIDhub-ensemble and COVID_CDC-ensemble models 
 # score_hosp_all <- score_hosp_all  %>% filter(model != "COVIDhub-ensemble" & model != "COVIDhub_CDC-ensemble")

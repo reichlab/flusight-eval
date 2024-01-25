@@ -1,0 +1,32 @@
+/*
+Modify default Bootstrap 4 styles to make make navbar and GitHub button match old https://viz.covid19forecasthub.org/ .
+*/
+
+.navbar {
+    padding: 1.125em 3vw 1.25em;
+}
+
+/*
+.nav-link {
+    font-size: 14px;
+}
+*/
+
+#github-link, #github-link:hover {
+    background-color: #004e92;
+    border-radius: 1.75rem;
+    border: 2px solid #004e92;
+    color: #fff;
+    font-weight: 700;
+    padding-left: 1.25em;
+    padding-right: 1.25em;
+    transition: .3s ease;
+    letter-spacing: .035em;
+    line-height: 1;
+}
+
+#github-link:hover {
+    background-color: transparent;
+    color: #004e92;
+    outline: 0;
+}
