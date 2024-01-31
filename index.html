@@ -61,8 +61,6 @@
 
 <script type="module">
     function populateReportDropdowns(reportDates) {
-        console.log('populateReportDropdowns()', reportDates, typeof (reportDates), reportDates.constructor.name);
-
         // remove old dropdown menu items, add new ones, and then add click handlers for them. new ones look like:
         //   <a class="dropdown-item active" href="#">2024-01-11</a>
         const selectedReportDate = reportDates[0];
@@ -71,14 +69,12 @@
         const $dropdownMenu = $(".dropdown-menu");
         reportDates.forEach(reportDate => {
             const isActive = reportDate === selectedReportDate ? 'active' : '';
-            console.log(`- ${reportDate}: ${isActive}`);
             $dropdownMenu.append(`<a class="dropdown-item ${isActive}" href="#">${reportDate}</a>`);
         });
         $(".dropdown-menu a").click(function () {
             // show the selected report and then mark item as active
             const $selectedA = $(this);
             const reportDate = $selectedA.text();
-            console.log('.dropdown-menu a click(): ', $selectedA, reportDate);
             showReport(reportDate);
 
             $(".dropdown-menu a").removeClass('active');
@@ -88,14 +84,11 @@
     }
 
     function showReport(reportDate) {
-        console.log('showReport()', reportDate);
         const reportUrl = `reports/${reportDate}_Evaluation_flu_hosp.html`;
         $('#report_iframe').attr('src', reportUrl);
     }
 
     $(document).ready(function () {
-        console.log("ready(): entered. loading json");
-
         // populate #reports_div from reports.json
         fetch('reports/reports.json')
             .then(data => data.json())
@@ -104,8 +97,6 @@
                 console.error('fetch(): error', err);
                 throw err
             });
-
-        console.log("ready(): done");
     });
 </script>
 
@@ -120,6 +111,27 @@
         integrity="sha384-+sLIOodYLS7CIrQpBjl+C7nPvqq+FbNUBDunl/OZv93DB7Ln/533i8e/mZXLi/P+"
         crossorigin="anonymous"></script>
 
+
+<!-- Default Statcounter code for reichlab.github.io http://reichlab.github.io/ -->
+<script type="text/javascript">
+    var sc_project = 10491184;
+    var sc_invisible = 1;
+    var sc_security = "40c0ea38";
+</script>
+<script type="text/javascript" src="https://www.statcounter.com/counter/counter.js" async>
+</script>
+<noscript>
+    <div class="statcounter">
+        <a title="hit counter"
+           href="https://statcounter.com/" target="_blank"><img
+                class="statcounter"
+                src="https://c.statcounter.com/10491184/0/40c0ea38/1/"
+                alt="hit counter"
+                referrerPolicy="no-referrer-when-downgrade">
+        </a>
+    </div>
+</noscript>
+<!-- End of Statcounter Code -->
 
 </body>
 
