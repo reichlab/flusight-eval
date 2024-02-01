@@ -45,7 +45,7 @@ git -C /data/FluSight-forecast-hub/ pull
 # run score_flusight_forecasts.R (creates a handful of `*.rda` files in current dir), passing `hub_path`. we run in
 # `code/` so that `Evaluation_flu_hosp.Rmd` can find them
 slack_message "running score_flusight_forecasts.R"
-cd code/
+cd /app/code/
 Rscript --vanilla "score_flusight_forecasts.R" /data/FluSight-forecast-hub/ >${OUT_FILE} 2>&1
 
 # knit Evaluation_flu_hosp.Rmd (creates `code/Evaluation_flu_hosp.html`)
@@ -70,7 +70,11 @@ fi
 # commit and save new .html and updated reports.json . do this on the `main` branch with no PR
 #
 
-cd ${FLUSIGHT_EVAL_DIR}
+if ! cd ${FLUSIGHT_EVAL_DIR}; then
+  slack_message "cd failed: ${FLUSIGHT_EVAL_DIR}"
+  exit 1 # fail
+fi
+
 git add reports/\*
 git commit -m "latest flusight-eval report, ${TODAY_DATE}"
 git push
