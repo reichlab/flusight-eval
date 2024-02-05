@@ -63,40 +63,67 @@
     function populateReportDropdowns(reportDates) {
         // remove old dropdown menu items, add new ones, and then add click handlers for them. new ones look like:
         //   <a class="dropdown-item active" href="#">2024-01-11</a>
-        const selectedReportDate = reportDates[0];
+        const dateParam = new URLSearchParams(window.location.search).get('date');  // null if not passed
+        const initialDate = dateParam || reportDates[0];
         $(".dropdown-menu a").remove();
 
         const $dropdownMenu = $(".dropdown-menu");
         reportDates.forEach(reportDate => {
-            const isActive = reportDate === selectedReportDate ? 'active' : '';
-            $dropdownMenu.append(`<a class="dropdown-item ${isActive}" href="#">${reportDate}</a>`);
+            const isActive = reportDate === initialDate ? 'active' : '';
+            $dropdownMenu.append(`<a class="dropdown-item ${isActive}" href="javascript:void(0)">${reportDate}</a>`);
         });
         $(".dropdown-menu a").click(function () {
             // show the selected report and then mark item as active
             const $selectedA = $(this);
             const reportDate = $selectedA.text();
-            showReport(reportDate);
-
-            $(".dropdown-menu a").removeClass('active');
-            $selectedA.addClass('active');
+            showReport(reportDate, true);
+            setMenuItemActive(reportDate);
         });
-        showReport(selectedReportDate);
+        showReport(initialDate, false);  // show initial report
     }
 
-    function showReport(reportDate) {
-        const reportUrl = `reports/${reportDate}_Evaluation_flu_hosp.html`;
-        $('#report_iframe').attr('src', reportUrl);
+    function showReport(reportDate, isPushState) {
+        const reportFrameUrl = `reports/${reportDate}_Evaluation_flu_hosp.html`;
+        // we use replace() instead of `$('#report_iframe').attr('src', reportFrameUrl);` to work around the feature
+        // where setting an iframe's src attribute will add a state to the browsers history stack.
+        // REF: https://stackoverflow.com/questions/29859048/updating-an-iframe-history-and-url-then-making-it-work-with-back-button
+        $('#report_iframe')[0].contentWindow.location.replace(reportFrameUrl);
+        if (isPushState) {
+            const newUrl = new URL(window.location.origin + window.location.pathname);
+            newUrl.searchParams.append("date", reportDate);
+            window.history.pushState(reportDate, '', newUrl);
+        }
+    }
+
+    /**
+     * Sets the class of the first menuitem whose date is `reportDate` to 'active', first clearing all menu items.
+     */
+    function setMenuItemActive(reportDate) {
+        $(".dropdown-menu a").removeClass('active');
+        $(`.dropdown-menu a:contains('${reportDate}')`).addClass('active');
     }
 
     $(document).ready(function () {
+        let loadedReportDates = null;  // set after successful load
+
         // populate #reports_div from reports.json
         fetch('reports/reports.json')
             .then(data => data.json())
-            .then(reportDates => populateReportDropdowns(reportDates))
+            .then(reportDates => {
+                loadedReportDates = reportDates;
+                populateReportDropdowns(loadedReportDates);
+            })
             .catch(err => {
                 console.error('fetch(): error', err);
                 throw err
             });
+
+        // add popstate handler
+        window.addEventListener("popstate", (event) => {
+            const reportDate = event.state || loadedReportDates[0];
+            showReport(reportDate, false);
+            setMenuItemActive(reportDate);
+        });
     });
 </script>
 
