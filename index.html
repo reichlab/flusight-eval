@@ -66,7 +66,6 @@
         const dateParam = new URLSearchParams(window.location.search).get('date');  // null if not passed
         const initialDate = dateParam || reportDates[0];
         $(".dropdown-menu a").remove();
-
         const $dropdownMenu = $(".dropdown-menu");
         reportDates.forEach(reportDate => {
             const isActive = reportDate === initialDate ? 'active' : '';
@@ -104,15 +103,10 @@
     }
 
     $(document).ready(function () {
-        let loadedReportDates = null;  // set after successful load
-
         // populate #reports_div from reports.json
         fetch('reports/reports.json')
             .then(data => data.json())
-            .then(reportDates => {
-                loadedReportDates = reportDates;
-                populateReportDropdowns(loadedReportDates);
-            })
+            .then(reportDates => populateReportDropdowns(reportDates))
             .catch(err => {
                 console.error('fetch(): error', err);
                 throw err
@@ -120,9 +114,14 @@
 
         // add popstate handler
         window.addEventListener("popstate", (event) => {
-            const reportDate = event.state || loadedReportDates[0];
-            showReport(reportDate, false);
-            setMenuItemActive(reportDate);
+            const dateParam = new URLSearchParams(window.location.search).get('date');  // null if not passed
+            if (dateParam) {
+                const reportDate = dateParam;
+                showReport(reportDate, false);
+                setMenuItemActive(reportDate);
+            } else {
+                console.warn(`popstate(): no dateParam. location=${document.location}, state=${JSON.stringify(event.state)}`);
+            }
         });
     });
 </script>
