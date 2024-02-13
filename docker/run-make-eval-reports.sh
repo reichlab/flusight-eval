@@ -61,18 +61,16 @@ mv "Evaluation_flu_hosp.html" "${FLUSIGHT_EVAL_DIR}/reports/${TODAY_DATE}_Evalua
 slack_message "updating reports.json"
 python3 update-reports-json.py "${FLUSIGHT_EVAL_DIR}/reports/" >>${OUT_FILE} 2>&1
 
-if [ -n "${DRY_RUN+x}" ]; then # yes DRY_RUN
-  slack_message "DRY_RUN set, exiting"
-  exit 0 # success
-fi
-
 #
 # commit and save new .html and updated reports.json . do this on the `main` branch with no PR
 #
 
-if ! cd ${FLUSIGHT_EVAL_DIR}; then
-  slack_message "cd failed: ${FLUSIGHT_EVAL_DIR}"
-  exit 1 # fail
+cd ${FLUSIGHT_EVAL_DIR}
+
+if [ -n "${DRY_RUN+x}" ]; then # yes DRY_RUN
+  slack_message "DRY_RUN set, exiting"
+  git status
+  exit 0 # success
 fi
 
 git add reports/\*

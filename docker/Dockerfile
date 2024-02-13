@@ -31,19 +31,19 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | g
 RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null;
 RUN apt update && apt install -y gh;
 
-# install required Python packages
+# install required Python packages using pip
 RUN apt-get update && apt-get install -y python3-pip
-RUN pip3 install 'click==8.1.7' 'python-dateutil==2.8.2'
-
-# install R packages from CRAN
-RUN Rscript -e "install.packages(c('remotes', 'lubridate', 'dplyr', 'ggplot2', 'plotly', 'lubridate', 'scoringutils', 'RColorBrewer', 'DT', 'surveillance', 'htmltools', 'kableExtra', 'covidHubUtils', 'plotly', 'tidyverse', 'zoltr', 'dplyr', 'desc', 'SciViews', 'pandoc'))"
-
-# install R packages from reichlab
-RUN Rscript -e "remotes::install_github('Infectious-Disease-Modeling-Hubs/hubUtils')"
-RUN Rscript -e "remotes::install_github('epiforecasts/scoringutils')"
-RUN Rscript -e "remotes::install_github('reichlab/covidHubUtils')"
 
 WORKDIR /app
+COPY requirements.txt requirements.txt
+RUN python3 -m pip install -r requirements.txt
+
+# install required R packages using renv
+RUN R -e "install.packages('renv', repos = c(CRAN = 'https://cloud.r-project.org'))"
+
+ENV RENV_PATHS_LIBRARY renv/library
+COPY renv.lock renv.lock
+RUN R -e "renv::restore()"
 
 # clone https://github.com/reichlab/container-utils. ADD is a hack ala https://stackoverflow.com/questions/35134713/disable-cache-for-specific-run-commands
 ADD "https://api.github.com/repos/reichlab/container-utils/commits?per_page=1" latest_commit

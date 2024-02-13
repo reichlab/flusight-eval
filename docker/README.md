@@ -6,6 +6,11 @@ The app uses the helper scripts in https://github.com/reichlab/container-utils/,
 
 This app supports a `DRY_RUN` environment variable.
 
+
+# Python and R packages
+
+The project's [Dockerfile](Dockerfile) uses the [requirements.txt](..%2Frequirements.txt) and [renv.lock](..%2Frenv.lock) files to install required Python and R packages. Users should update those files as needed to maintain a working application.
+
 # `/data` dir
 
 The app expects a volume (either a [local Docker one](https://docs.docker.com/storage/volumes/) or an [AWS EFS](https://aws.amazon.com/efs/) file system) to be mounted at `/data` and which contains this required GitHub repo:
