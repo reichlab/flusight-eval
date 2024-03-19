@@ -3,6 +3,7 @@
 
 #Set-up and load forecast data
 library(hubUtils)
+library(hubData)
 library(scoringutils)
 library(covidHubUtils)
 
@@ -23,7 +24,7 @@ if (length(args) != 1) {
 }
 
 #download metadata
-meta_data <- load_model_metadata(hub_path) |>
+meta_data <- hubData::load_model_metadata(hub_path) |>
   rename(model = model_id) |>
   select(model, designated_model)
 
