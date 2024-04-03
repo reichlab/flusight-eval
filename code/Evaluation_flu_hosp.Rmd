@@ -39,6 +39,16 @@ accuracy_filter <- function(x,y) {
     filter(!is.na(interval_score)|!is.na(ae_median)) %>% droplevels()
 }
 
+accuracy_filter_loc <- function(x,y) {
+  x %>%
+    filter(reference_date>=y) %>% 
+    group_by(model, location) %>% 
+    mutate(n_forecasts_wis = sum(!is.na(interval_score)),
+           n_forecasts_mae = sum(!is.na(ae_median))) %>% ungroup() %>%
+    filter(n_forecasts_wis >= (max(n_forecasts_wis)*0.5) | n_forecasts_mae >= (max(n_forecasts_mae)*0.5)) %>% 
+    filter(!is.na(interval_score)|!is.na(ae_median)) %>% droplevels()
+}
+
 # plot_byweek_function: Plot wis by week 
 plot_byweek_function <- function(df, var,var_name, horizon_num,subt) {
   ggplot(data =  df %>% filter(horizon == horizon_num), aes(label = model, 
@@ -149,6 +159,8 @@ diff_weeks_season = as.numeric(diff_weeks_season)
 
 ```{r load data}
 #load files generated in query-scores-weekly-report.R
+#for dev running locally, uncomment line below
+# setwd("~/github/flusight-eval/reports")
 load(file = "meta_data.rda")
 load(file = "raw_data.rda")
 load(file = "log_data.rda")
@@ -182,7 +194,7 @@ The US Centers for Disease Control and Prevention (CDC), collects short-term for
 
 This report evaluates forecasts at the state level for weekly number of confirmed influenza hospital admissions for 0 to 3 week horizons, using similar methods that were employed for [COVID-19 Evaluation Reports](https://covid19forecasthub.org/eval-reports/){target="_blank"}.  Data by CDC on healthdata.gov (details [here](https://github.com/cdcepi/FluSight-forecast-hub/tree/main/target-data){target="_blank"}) is used as ground truth data for evaluating the forecasts.
 
-We evaluate models based on their adjusted relative [weighted interval scores (WIS, a measure of distributional accuracy)](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1008618){target="_blank"}, and adjusted relative mean absolute error (MAE). Scores are aggregated separately for the most recent 4 weeks and for entire 2023-2024 season. To account for the variation in difficulty of forecasting different weeks and locations, a [pairwise approach](https://www.pnas.org/doi/10.1073/pnas.2113561119){target="_blank"} was used to calculated the relative adjusted WIS and MAE,to attempt to adjust for teams submitting forecasts for different subsets of weeks, locations and horizons. Models with relative scores lower than 1 have been more accurate than the baseline on average, whereas relative scores greater than 1 indicate less accuracy than baseline on average.
+We evaluate models based on their adjusted relative [weighted interval scores (WIS, a measure of distributional accuracy)](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1008618){target="_blank"}, and adjusted relative mean absolute error (MAE). Scores are aggregated separately for the most recent 4 weeks and for entire 2023-2024 season. To account for the variation in difficulty of forecasting different weeks and locations, a [pairwise approach](https://www.pnas.org/doi/10.1073/pnas.2113561119){target="_blank"} was used to calculated the relative adjusted WIS and MAE, to attempt to adjust for teams submitting forecasts for different subsets of weeks, locations and horizons. Models with relative scores lower than 1 have been more accurate than the baseline on average, whereas relative scores greater than 1 indicate less accuracy than baseline on average.
 
 We generated scores in two ways, with the raw counts and with the log transformed counts. It has been argued that the log-transformation prior to scoring yields epidemiologically meaningful and easily interpretable results, while also reducing the impact of high-count locations on aggregated scores [Bosse et al. (2023)](https://www.medrxiv.org/content/10.1101/2023.01.23.23284722v1).
 
@@ -266,12 +278,14 @@ recent_accuracy_overall<-n_by_location_date |>
 
 ```{r recent accuracy HOSP-by location}
 #at least 50% of recent WIS or 50% of recent MAE
-accuracy_recent <- accuracy_filter(raw_scores,first_eval_sat_recent)
-recent_models <- unique(accuracy_recent$model)
+accuracy_recent_loc <- accuracy_filter_loc(raw_scores,first_eval_sat_recent)
+recent_models_loc <- unique(accuracy_recent_loc[c("model","location")])
+
 
 #wis scores by horizon
 wis_recent_by_horizon_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
+  semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>% 
   summarise_scores(by = c("model", "horizon","location"),relative_skill=TRUE,  baseline="FluSight-baseline") |>
   mutate(rel_wis=round(scaled_rel_skill,2))|>
   select(model, horizon, rel_wis,location)|>
@@ -282,7 +296,8 @@ wis_recent_by_horizon_loc <- raw_scores |>
 
 #mae scores by horizon
 mae_recent_by_horizon_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
+  semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US") %>% 
   summarise_scores(by = c("model", "horizon","location"),relative_skill=TRUE, relative_skill_metric="ae_median",  baseline="FluSight-baseline") |>
   mutate(rel_mae=round(scaled_rel_skill,2))|>
   select(model, horizon, rel_mae,location)|>
@@ -293,7 +308,8 @@ mae_recent_by_horizon_loc <- raw_scores |>
 
 # forecasts by model 
 n_by_location_date_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
+  semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>% 
   group_by(model,location,quantile) %>%   
   mutate(n_forecasts = sum(!is.na(interval_score))) %>% 
   summarise("# recent forecasts" = max(n_forecasts)) %>% 
@@ -304,7 +320,8 @@ n_by_location_date_loc <- raw_scores |>
 
 #wis by model
 wis_recent_by_model_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>%
+  semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>%
   add_coverage(ranges = c(50, 95), by = c("model")) |>
   summarise_scores(by = c("model","location"),relative_skill=TRUE,  baseline="FluSight-baseline")|>
   mutate(rel_wis=round(scaled_rel_skill,2))|>
@@ -312,13 +329,14 @@ wis_recent_by_model_loc <- raw_scores |>
   arrange(rel_wis)
 
 mae_recent_by_model_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>%
+  semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>%
   add_coverage(ranges = c(50, 95), by = c("model","location")) |>
   summarise_scores(by = c("model","location"),relative_skill=TRUE, relative_skill_metric="ae_median",  baseline="FluSight-baseline")|>
   mutate(rel_mae=round(scaled_rel_skill,2))|>
   select(model, rel_mae,location)
 
-wis_recent_order<-unique(wis_recent_by_model$model)
+wis_recent_order_loc<-unique(wis_recent_by_model_loc$model)
 
 recent_accuracy_loc<-n_by_location_date_loc |>
   left_join(wis_recent_by_model_loc, by=c("model","location")) |>
@@ -402,12 +420,14 @@ season_accuracy_overall<-n_season_by_location_date |>
 
 ```{r seasonal accuracy HOSP-by location}
 #at least 50% of recent WIS or 50% of recent MAE
-accuracy_season <- accuracy_filter(raw_scores,first_eval_sat_season)
-season_models <- unique(accuracy_season$model)
+accuracy_season_loc <- accuracy_filter_loc(raw_scores,first_eval_sat_season)
+season_models_loc <- unique(accuracy_season_loc[c("model","location")])
+
 
 #wis scores by horizon
 wis_season_by_horizon_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models & location != "US") %>% 
+  semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   summarise_scores(by = c("model", "horizon","location"),relative_skill=TRUE,  baseline="FluSight-baseline") |>
   mutate(rel_wis=round(scaled_rel_skill,2))|>
   select(model, horizon, rel_wis,location)|>
@@ -418,7 +438,8 @@ wis_season_by_horizon_loc <- raw_scores |>
 
 #mae scores by horizon
 mae_season_by_horizon_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models & location != "US") %>% 
+  semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   summarise_scores(by = c("model", "horizon","location"),relative_skill=TRUE, relative_skill_metric="ae_median",  baseline="FluSight-baseline") |>
   mutate(rel_mae=round(scaled_rel_skill,2))|>
   select(model, horizon, rel_mae,location)|>
@@ -429,7 +450,8 @@ mae_season_by_horizon_loc <- raw_scores |>
 
 # forecasts by model
 n_season_by_location_date_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models & location != "US") %>% 
+  semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   group_by(model,location,quantile) %>%   
   mutate(n_forecasts = sum(!is.na(interval_score))) %>% 
   summarise("# historical forecasts" = max(n_forecasts)) %>% 
@@ -438,7 +460,8 @@ n_season_by_location_date_loc <- raw_scores |>
 
 # scores by model
 wis_season_by_model_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models  & location != "US") %>%
+  semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   add_coverage(ranges = c(50, 95), by = c("model")) |>
   summarise_scores(by = c("model","location"),relative_skill=TRUE,  baseline="FluSight-baseline")|>
   mutate(rel_wis=round(scaled_rel_skill,2))|>
@@ -446,13 +469,14 @@ wis_season_by_model_loc <- raw_scores |>
   arrange(rel_wis)
 
 mae_season_by_model_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models  & location != "US") %>%
+  semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   add_coverage(ranges = c(50, 95), by = c("model","location")) |>
   summarise_scores(by = c("model","location"),relative_skill=TRUE, relative_skill_metric="ae_median",  baseline="FluSight-baseline")|>
   mutate(rel_mae=round(scaled_rel_skill,2))|>
   select(model, rel_mae,location)
 
-wis_season_order<-unique(wis_season_by_model$model)
+wis_season_order_loc<-unique(wis_season_by_model_loc$model)
 
 season_accuracy_loc<-n_season_by_location_date_loc |>
   left_join(wis_season_by_model_loc, by=c("model","location"))  |>
@@ -527,7 +551,8 @@ recent_coverage_overall<-n_by_location_date  |>
 ```{r recent coverage HOSP-by location}
 #50% coverage scores by horizon
 c50_recent_by_horizon_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
+  semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>% 
   add_coverage(ranges = c(50,95), by = c("model", "horizon","location")) |>
   summarise_scores(by = c("model", "horizon","location")) |>
   mutate(c50=round(coverage_50,2))|>
@@ -539,7 +564,8 @@ c50_recent_by_horizon_loc <- raw_scores |>
 
 #95% coverage scores by horizon
 c95_recent_by_horizon_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
+   semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>% 
   add_coverage(ranges = c(95), by = c("model", "horizon","location")) |>
   summarise_scores(by = c("model", "horizon","location")) |>
   mutate(c95=round(coverage_95,2))|>
@@ -551,14 +577,16 @@ c95_recent_by_horizon_loc <- raw_scores |>
 
 #coverage by model
 c_recent_by_model_50_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
+  semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>% 
   add_coverage(ranges = c(50), by = c("model","location")) |>
   summarise_scores(by = c("model","location"))|>
   mutate(c50=round(coverage_50,2))|>
   select(model, c50,location)
 
 c_recent_by_model_95_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
+  semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>% 
   add_coverage(ranges = c(95), by = c("model","location")) |>
   summarise_scores(by = c("model","location"))|>
   mutate(diff_95 = abs(0.95-coverage_95),
@@ -639,7 +667,8 @@ season_coverage_overall<-n_season_by_location_date  |>
 ```{r season coverage HOSP-by location}
 #50% coverage scores by horizon
 c50_season_by_horizon_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models & location != "US") %>% 
+  semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   add_coverage(ranges = c(50), by = c("model", "horizon")) |>
   summarise_scores(by = c("model", "horizon","location")) |>
   mutate(c50=round(coverage_50,2))|>
@@ -651,7 +680,8 @@ c50_season_by_horizon_loc <- raw_scores |>
 
 #95% coverage scores by horizon
 c95_season_by_horizon_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models & location != "US") %>% 
+  semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   add_coverage(ranges = c(95), by = c("model", "horizon")) |>
   summarise_scores(by = c("model", "horizon","location")) |>
   mutate(c95=round(coverage_95,2))|>
@@ -663,14 +693,16 @@ c95_season_by_horizon_loc <- raw_scores |>
 
 #coverage by model
 c_season_by_model_50_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models  & location != "US") %>% 
+  semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   add_coverage(ranges = c(50), by = c("model","location")) |>
   summarise_scores(by = c("model","location"))|>
   mutate(c50=round(coverage_50,2))|>
   select(model, c50,location)
 
 c_season_by_model_95_loc <- raw_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models  & location != "US") %>% 
+  semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   add_coverage(ranges = c(95), by = c("model","location")) |>
   summarise_scores(by = c("model","location"))|>
   mutate(diff_95 = abs(0.95-coverage_95),
@@ -692,6 +724,7 @@ season_coverage<- rbind(season_coverage_overall,season_coverage_loc) |>
 
 
 ```
+
 ```{r, echo=FALSE,include = FALSE}
 # You need this code to conduct the magic dependences attaching...
 DT::datatable(matrix())
@@ -699,7 +732,7 @@ DT::datatable(matrix())
 
 #### Recent Accuracy {.tabset .tabset-dropdown}
 
-To calculate each column in our table, different inclusion criteria were applied. This table only includes forecasts with reference dates falling within the last 4 weeks, since `r format(first_eval_sat_recent, "%B %d, %Y")`. Additionally, models included have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination. 
+This table only includes forecasts with reference dates falling within the last 4 weeks, since `r format(first_eval_sat_recent, "%B %d, %Y")`. Additionally, models included  for 'All locations' have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination. Models included  for an individual location have submitted  at least 50% of forecasts for that location during this time. 
 
 The data are initially ordered for all locations, by model based on their relative WIS score aggregated across horizons, with the most accurate models at the top. 
 
@@ -767,8 +800,7 @@ filter = c("top")
 #### Historical Accuracy {.tabset .tabset-dropdown}
 
 
-
-To calculate each column in the table, different inclusion criteria were applied. This table includes forecasts with reference dates falling within the last  `r diff_weeks_season` weeks, since `r format(first_eval_sat_season, "%B %d, %Y")`. Additionaly, models included have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination. 
+This table includes forecasts with reference dates falling within the last  `r diff_weeks_season` weeks, since `r format(first_eval_sat_season, "%B %d, %Y")`. Additionaly, models included  for 'All locations' have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination. Models included  for an individual location have submitted  at least 50% of forecasts for that location during this time. 
 
 The data are initially ordered for all locations, by model based on their relative WIS score aggregated across horizons, with the most accurate models at the top. 
 
@@ -825,7 +857,7 @@ filter = c("top")
 
 #### Recent Coverage {.tabset .tabset-dropdown}
 
-This table only includes forecasts with reference dates falling within the last 4 weeks, since `r format(first_eval_sat_recent, "%B %d, %Y")`. Additionally, models included have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination. 
+This table only includes forecasts with reference dates falling within the last 4 weeks, since `r format(first_eval_sat_recent, "%B %d, %Y")`. Additionally, models included  for 'All locations' have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination. Models included  for an individual location have submitted  at least 50% of forecasts for that location during this time. 
 
 The data are initially ordered for all locations, by model based on their 95% PI coverage, with the models whose empirical coverage rates are closest to 95% at the top.  
 
@@ -887,7 +919,7 @@ filter = c("top")
 
 #### Historical Coverage {.tabset .tabset-dropdown}
 
-To calculate each column in the table, different inclusion criteria were applied. This table includes forecasts with reference dates falling within the last  `r diff_weeks_season` weeks, since `r format(first_eval_sat_season, "%B %d, %Y")`. Additionaly, models included have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination. 
+This table includes forecasts with reference dates falling within the last  `r diff_weeks_season` weeks, since `r format(first_eval_sat_season, "%B %d, %Y")`. Additionaly, models included  for 'All locations' have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination. Models included  for an individual location have submitted  at least 50% of forecasts for that location during this time. 
 
 The data are initially ordered for all locations, by model based on their 95% PI coverage, with the models whose empirical coverage rates are closest to 95% at the top.  
 
@@ -987,7 +1019,7 @@ ggplot(wiscom_recent_by_model, aes(fill=score_names, y=value, x=model)) +
 
 ### Evaluation by Week  {.tabset .tabset-fade}
 
-In the following figures, we have evaluated models across multiple forecasting weeks. Points included in this comparison are for models that have submitted probabilistic forecasts for all 50 states. In the legend, the models with a dot and line have scores for ever week, while the models with just a line are missing scores for at least one week.
+In the following figures, we have evaluated models across multiple forecasting weeks. Points included in this comparison are for models that have submitted probabilistic forecasts for all 50 states. In the legend, the models with a dot and line have scores for every week, while the models with just a line are missing scores for at least one week.
 
 For the figures, WIS is used as a metric, with the y axis truncated at the 97.5 percentile of the weekly average WIS. The first figure shows the mean WIS across all 50 states for submission weeks beginning `r format(first_eval_sat_season, "%B %d, %Y")` at a 0 week horizon. The next 3 figures show the mean WIS aggregated across locations for 1, 2 and 3 week horizons.  The last 4 figures show the empirical 95% PI coverage aggregated across locations for all horizons.  
 
@@ -1315,7 +1347,7 @@ ggplotly(by_week_c_3wk, tooltip = c("label", "labelx", "labely"))
 
 ### Evaluation by Location {.tabset .tabset-fade}
 
-This figures below show recent model performance stratified by location. We only included forecasts for the last 4 weeks. Models were included if they had submitted forecasts for all 5 horizons and submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination.   Locations are sorted by cumulative hospitalization counts.
+This figures below show recent model performance stratified by location. We only included forecasts for the last 4 weeks. Models were included if they submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination.   Locations are sorted by cumulative hospitalization counts.
 
 The color scheme shows the WIS score relative to the baseline, across all horizons. The only locations evaluated are 50 states, selected jurisdictions and the national level forecast. The data are ordered on the x axis based on their relative WIS score shown in the accuracy table, aggregated across horizons.
 
@@ -1423,12 +1455,13 @@ recent_accuracy_overall<-n_by_location_date |>
 
 ```{r recent accuracy HOSP-log-by location}
 #at least 50% of recent WIS or 50% of recent MAE
-accuracy_recent <- accuracy_filter(log_scores,first_eval_sat_recent)
-recent_models <- unique(accuracy_recent$model)
+accuracy_recent_loc <- accuracy_filter_loc(log_scores,first_eval_sat_recent)
+recent_models_loc <- unique(accuracy_recent_loc[c("model","location")])
 
 #wis scores by horizon
 wis_recent_by_horizon_loc <- log_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
+  semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>% 
   summarise_scores(by = c("model", "horizon","location"),relative_skill=TRUE,  baseline="FluSight-baseline") |>
   mutate(rel_wis=round(scaled_rel_skill,2))|>
   select(model, horizon, rel_wis,location)|>
@@ -1439,7 +1472,8 @@ wis_recent_by_horizon_loc <- log_scores |>
 
 #mae scores by horizon
 mae_recent_by_horizon_loc <- log_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
+ semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>% 
   summarise_scores(by = c("model", "horizon","location"),relative_skill=TRUE, relative_skill_metric="ae_median",  baseline="FluSight-baseline") |>
   mutate(rel_mae=round(scaled_rel_skill,2))|>
   select(model, horizon, rel_mae,location)|>
@@ -1450,7 +1484,8 @@ mae_recent_by_horizon_loc <- log_scores |>
 
 # forecasts by model 
 n_by_location_date_loc <- log_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>% 
+  semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>% 
   group_by(model,location,quantile) %>%   
   mutate(n_forecasts = sum(!is.na(interval_score))) %>% 
   summarise("# recent forecasts" = max(n_forecasts)) %>% 
@@ -1461,7 +1496,8 @@ n_by_location_date_loc <- log_scores |>
 
 #wis by model
 wis_recent_by_model_loc <- log_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>%
+ semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>% 
   add_coverage(ranges = c(50, 95), by = c("model","location")) |>
   summarise_scores(by = c("model","location"),relative_skill=TRUE,  baseline="FluSight-baseline")|>
   mutate(rel_wis=round(scaled_rel_skill,2))|>
@@ -1469,13 +1505,14 @@ wis_recent_by_model_loc <- log_scores |>
   arrange(rel_wis)
 
 mae_recent_by_model_loc <- log_scores |>
-  filter(reference_date>=first_eval_sat_recent & model %in% recent_models  & location != "US") %>%
+ semi_join(recent_models_loc) |>
+  filter(reference_date>=first_eval_sat_recent & location != "US")  %>% 
   add_coverage(ranges = c(50, 95), by = c("model","location")) |>
   summarise_scores(by = c("model","location"),relative_skill=TRUE, relative_skill_metric="ae_median",  baseline="FluSight-baseline")|>
   mutate(rel_mae=round(scaled_rel_skill,2))|>
   select(model, rel_mae,location)
 
-wis_recent_order<-unique(wis_recent_by_model$model)
+wis_recent_order_loc<-unique(wis_recent_by_model_loc$model)
 
 recent_accuracy_loc<-n_by_location_date_loc |>
   left_join(wis_recent_by_model_loc, by=c("model","location")) |>
@@ -1560,12 +1597,13 @@ season_accuracy_overall<-n_season_by_location_date |>
 
 ```{r season accuracy HOSP-log-by location}
 #at least 50% of season WIS or 50% of season MAE
-accuracy_season <- accuracy_filter(log_scores,first_eval_sat_season)
-season_models <- unique(accuracy_season$model)
+accuracy_season_loc <- accuracy_filter_loc(log_scores,first_eval_sat_season)
+season_models_loc <- unique(accuracy_season_loc[c("model","location")])
 
 #wis scores by horizon
 wis_season_by_horizon_loc <- log_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models  & location != "US") %>% 
+    semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   summarise_scores(by = c("model", "horizon","location"),relative_skill=TRUE,  baseline="FluSight-baseline") |>
   mutate(rel_wis=round(scaled_rel_skill,2))|>
   select(model, horizon, rel_wis,location)|>
@@ -1576,7 +1614,8 @@ wis_season_by_horizon_loc <- log_scores |>
 
 #mae scores by horizon
 mae_season_by_horizon_loc <- log_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models  & location != "US") %>% 
+    semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   summarise_scores(by = c("model", "horizon","location"),relative_skill=TRUE, relative_skill_metric="ae_median",  baseline="FluSight-baseline") |>
   mutate(rel_mae=round(scaled_rel_skill,2))|>
   select(model, horizon, rel_mae,location)|>
@@ -1587,7 +1626,8 @@ mae_season_by_horizon_loc <- log_scores |>
 
 # forecasts by model 
 n_by_location_date_loc <- log_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models  & location != "US") %>% 
+    semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   group_by(model,location,quantile) %>%   
   mutate(n_forecasts = sum(!is.na(interval_score))) %>% 
   summarise("# historical forecasts" = max(n_forecasts)) %>% 
@@ -1598,7 +1638,8 @@ n_by_location_date_loc <- log_scores |>
 
 #wis by model
 wis_season_by_model_loc <- log_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models  & location != "US") %>%
+    semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   add_coverage(ranges = c(50, 95), by = c("model","location")) |>
   summarise_scores(by = c("model","location"),relative_skill=TRUE,  baseline="FluSight-baseline")|>
   mutate(rel_wis=round(scaled_rel_skill,2))|>
@@ -1606,13 +1647,14 @@ wis_season_by_model_loc <- log_scores |>
   arrange(rel_wis)
 
 mae_season_by_model_loc <- log_scores |>
-  filter(reference_date>=first_eval_sat_season & model %in% season_models  & location != "US") %>%
+    semi_join(season_models_loc) |>
+  filter(reference_date>=first_eval_sat_season & location != "US") %>% 
   add_coverage(ranges = c(50, 95), by = c("model","location")) |>
   summarise_scores(by = c("model","location"),relative_skill=TRUE, relative_skill_metric="ae_median",  baseline="FluSight-baseline")|>
   mutate(rel_mae=round(scaled_rel_skill,2))|>
   select(model, rel_mae,location)
 
-wis_season_order<-unique(wis_season_by_model$model)
+wis_season_order_loc<-unique(wis_season_by_model_loc$model)
 
 season_accuracy_loc<-n_by_location_date_loc |>
   left_join(wis_season_by_model_loc, by=c("model","location")) |>
@@ -1632,7 +1674,7 @@ season_accuracy<- rbind(season_accuracy_overall,season_accuracy_loc) |>
 
 #### Recent Accuracy  {.tabset .tabset-dropdown} 
 
-To calculate each column in our table, different inclusion criteria were applied. This table only includes forecasts with reference dates falling within the last 4 weeks, since `r format(first_eval_sat_recent, "%B %d, %Y")`. Additionally, models included have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination.
+This table only includes forecasts with reference dates falling within the last 4 weeks, since `r format(first_eval_sat_recent, "%B %d, %Y")`. Additionally, models included  for 'All locations' have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination. Models included  for an individual location have submitted  at least 50% of forecasts for that location during this time. 
 
 The data are initially ordered by model based on their relative WIS score aggregated across horizons, with the most accurate models at the top.
 
@@ -1701,7 +1743,8 @@ filter = c("top")
 
 #### Historical Accuracy {.tabset .tabset-dropdown} 
 
-To calculate each column in the table, different inclusion criteria were applied. This table includes forecasts with reference dates falling within the last  `r diff_weeks_season` weeks, since `r format(first_eval_sat_season, "%B %d, %Y")`. Additionaly, models included have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination. 
+This table includes forecasts with reference dates falling within the last  `r diff_weeks_season` weeks, since `r format(first_eval_sat_season, "%B %d, %Y")`. Additionally, models included  for 'All locations' have submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination. Models included  for an individual location have submitted  at least 50% of forecasts for that location during this time. 
+ 
 
 The data are initially ordered  by model based on their relative WIS score aggregated across horizons, with the most accurate models at the top.
 
@@ -1796,9 +1839,9 @@ ggplot(wiscom_recent_by_model, aes(fill=score_names, y=value, x=model)) +
 
 ### Evaluation by Week  {.tabset .tabset-fade}
 
-In the following figures, we have evaluated models across multiple forecasting weeks. Points included in this comparison are for models that have submitted probabilistic forecasts for all 50 states. In the legend, the models with a dot and line have scores for ever week, while the models with just a line are missing scores for at least one week.
+In the following figures, we have evaluated models across multiple forecasting weeks. Points included in this comparison are for models that have submitted probabilistic forecasts for all 50 states. In the legend, the models with a dot and line have scores for every week, while the models with just a line are missing scores for at least one week.
 
-For the first 2 figures, WIS is used as a metric, with the y axis truncated at the 97.5 percentile of the weekly average WIS. The first figure shows the mean WIS across all 50 states for submission weeks beginning `r format(first_eval_sat_season, "%B %d, %Y")` at a 0 week horizon. The second figure shows the mean WIS aggregated across locations, however it is for a 2 week horizon.
+For the figures, WIS is used as a metric, with the y axis truncated at the 97.5 percentile of the weekly average WIS. The first figure shows the mean WIS across all 50 states for submission weeks beginning `r format(first_eval_sat_season, "%B %d, %Y")` at a 0 week horizon. The next 3 figures show the mean WIS aggregated across locations for 1, 2 and 3 week horizons.  The last 4 figures show the empirical 95% PI coverage aggregated across locations for all horizons.  
 
 #### 0 Week Horizon WIS
 
@@ -1970,7 +2013,7 @@ ggplotly(by_week_wis_3wk,tooltip = c("label", "labelx", "labely"))
 
 ### Evaluation by Location {.tabset .tabset-fade}
 
-This figures below show recent model performance stratified by location. We only included forecasts for the last 4 weeks. Models were included if they had submitted forecasts for all 5 horizons and submitted  at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination.   Locations are sorted by cumulative hospitalization counts.
+This figures below show recent model performance stratified by location. We only included forecasts for the last 4 weeks. Models were included if they had submitted at least 50% of forecasts during this time, where one forecast is a location, target, forecast date combination.   Locations are sorted by cumulative hospitalization counts.
 
 The color scheme shows the WIS score relative to the baseline, across all horizons. The only locations evaluated are 50 states, selected jurisdictions and the national level forecast. The data are ordered on the x axis based on their relative WIS score shown in the accuracy table, aggregated across horizons.
 
