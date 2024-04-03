@@ -159,6 +159,7 @@ diff_weeks_season = as.numeric(diff_weeks_season)
 
 ```{r load data}
 #load files generated in query-scores-weekly-report.R
+#for dev running locally, uncomment line below
 # setwd("~/github/flusight-eval/reports")
 load(file = "meta_data.rda")
 load(file = "raw_data.rda")
