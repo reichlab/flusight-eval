@@ -2,7 +2,10 @@
 title: "FluSight Forecast Evaluation Report"
 author: "This report was developed by the [Reich Lab](https://reichlab.io/) from UMass-Amherst in collaboration with the US CDC [FluSight Hub](https://github.com/cdcepi/FluSight-forecast-hub/tree/main)."
 date: "`r format(Sys.time(), '%B %d, %Y')`"
-output: html_document
+output:
+  html_document:
+    includes:
+      in_header: plausible.html
       
 ---
 
